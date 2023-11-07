@@ -31,8 +31,9 @@ except (IOError, KeyError) as e:
 
 deviceId = "1001e90f"  # Replace with your actual device ID
 
-unencoded_startTimestamp = "2023-11-05T00:00:00.000+00:00"
-unencoded_endTimestamp = "2023-11-07T23:59:00.000+00:00"
+# script will download all video files between start and end timestamp
+unencoded_startTimestamp = "2023-11-05T00:00:00.000+00:00" # add start timestamp
+unencoded_endTimestamp = "2023-11-07T23:59:00.000+00:00" # add end timestamp
 startTimestamp = unencoded_startTimestamp.replace(":", TIMESTAMP_FORMAT0).replace("+", TIMESTAMP_FORMAT1)
 endTimestamp = unencoded_endTimestamp.replace(":", TIMESTAMP_FORMAT0).replace("+", TIMESTAMP_FORMAT1)
 
