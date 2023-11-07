@@ -1,41 +1,41 @@
-import json, requests, sys
+import json, requests
 from flask import Flask, request
-
-# script will generate file "access_response.json that is used to store the access_token + refresh_token"
-# this should only be used within development environments, never share the refresh token publicly
 
 app = Flask(__name__)
 
-hostName = "127.0.0.1"
-port = 3333
+HOST_NAME = "127.0.0.1"
+PORT = 3333
+CLIENT_ID = ""
+CLIENT_SECRET = ""
+AUTH_URL = "https://auth.eagleeyenetworks.com"
+BASE_URL = "https://api.eagleeyenetworks.com"
 
-clientId = ""
-clientSecret = ""
+def make_request(method, url, headers=None, auth=None):
+    response = requests.request(method, url, headers=headers, auth=auth)
+    if response.status_code == 200:
+        return json.loads(response.text)
+    else:
+        print(f"Debug - Failed to make request. Response: {response.text}")  # Debug
+        return None
 
 def getTokens(code):
-    url = "https://auth.eagleeyenetworks.com/oauth2/token?grant_type=authorization_code&scope=vms.all&code=" + code + "&redirect_uri=http://" + hostName + ":" + str(port)
-    response = requests.post(url, auth=(clientId, clientSecret))
-    if response.status_code == 200:
-        oauthObject = json.loads(response.text)
+    url = f"{AUTH_URL}/oauth2/token?grant_type=authorization_code&scope=vms.all&code={code}&redirect_uri=http://{HOST_NAME}:{PORT}"
+    oauthObject = make_request("POST", url, auth=(CLIENT_ID, CLIENT_SECRET))
+    if oauthObject:
         accessToken = oauthObject.get('access_token', None)
         print(f"Debug - Access Token: {accessToken}")  # Debug
-        if accessToken:
-            return accessToken, oauthObject
-    print(f"Debug - Failed to get Access Token. Response: {response.text}")  # Debug
-    return None
+        return accessToken, oauthObject
+    return None, None
 
 def get_base_url(accessToken):
-    url = "https://api.eagleeyenetworks.com/api/v3.0/clientSettings"
+    url = f"{BASE_URL}/api/v3.0/clientSettings"
     headers = {
         "accept": "application/json",
         "authorization": f"Bearer {accessToken}"
     }
-    response = requests.get(url, headers=headers)
-    if response.status_code == 200:
-        settings = json.loads(response.text)
-        hostname = settings.get('httpsBaseUrl', {}).get('hostname')
-        if hostname:
-            return f"{hostname}"
+    settings = make_request("GET", url, headers=headers)
+    if settings:
+        return settings.get('httpsBaseUrl', {}).get('hostname')
     return None
 
 def get_user_details(accessToken):
@@ -47,16 +47,13 @@ def get_user_details(accessToken):
     if not base_url:
         print("Debug - Failed to get base URL")
         return {}
-      
-    url = f"https://{base_url}/api/v3.0/users/self"  # Make sure this URL is correct
-    headers = {"accept": "application/json", "authorization": "Bearer " + accessToken}
-    response = requests.get(url, headers=headers)
-    if response.status_code == 200:
-        userDetails = json.loads(response.text)
-        return userDetails
-    else:
-        print(f"Debug - Failed to get user details. Response: {response.text}")  # Debug
-        return {}
+    
+    url = f"https://{base_url}/api/v3.0/users/self"
+    headers = {"accept": "application/json", "authorization": f"Bearer {accessToken}"}
+    userDetails = make_request("GET", url, headers=headers)
+    if not userDetails:
+        print(f"Debug - Failed to get user details.")  # Debug
+    return userDetails or {}
 
 @app.route('/')
 def index():
@@ -70,14 +67,13 @@ def index():
         userDetails = get_user_details(accessToken)
         userId = userDetails.get('id', 'unknown')
         
-        with open(f'access_response.json', 'w') as f:
-            f.write(json.dumps(oauthObject))
+        with open('access_response.json', 'w') as f:
+            json.dump(oauthObject, f)
             
         return f"You are logged in. Your user ID is {userId}."
     else:
-        endpoint = "https://auth.eagleeyenetworks.com/oauth2/authorize"
-        requestAuthUrl = endpoint + "?client_id=" + clientId + "&response_type=code&scope=vms.all&redirect_uri=http://" + hostName + ":" + str(port)
-        return "<a href='" + requestAuthUrl + "'>Login with Eagle Eye Networks</a>"
+        endpoint = f"{AUTH_URL}/oauth2/authorize?client_id={CLIENT_ID}&response_type=code&scope=vms.all&redirect_uri=http://{HOST_NAME}:{PORT}"
+        return f"<a href='{endpoint}'>Login with Eagle Eye Networks</a>"
 
 if __name__ == '__main__':
-    app.run(host=hostName, port=port)
+    app.run(host=HOST_NAME, port=PORT)
