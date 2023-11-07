@@ -1,3 +1,7 @@
+# apiv3_mp4_dl.py
+Added new version, only access token and esn are needed for this one<br>
+<br>
+<br>
 # APIv3_mp4_downloader
 Eagle Eye Networks API v3 MP4 Downloader<br>
 <br>
